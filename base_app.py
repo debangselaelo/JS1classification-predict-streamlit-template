@@ -25,6 +25,7 @@
 import streamlit as st
 import joblib,os
 
+# Data dependencies
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
@@ -32,10 +33,22 @@ import seaborn as sns
 from nltk.probability import FreqDist
 from wordcloud import WordCloud, ImageColorGenerator
 
+# for data cleaning and stopwords removal
+import re
+import nltk
+import string
+import unidecode
+from nltk import pos_tag
+from nlppreprocess import NLP
+nlp = NLP()
+from nltk.stem.wordnet import WordNetLemmatizer
 
-# Vectorizer
-news_vectorizer = open("resources/Vectorizer.pkl","rb")
+news_vectorizer = open("resources/tfidfvect.pkl","rb")
 tweet_cv = joblib.load(news_vectorizer) # loading your vectorizer from the pkl file
+#Count Vectorizer
+team_vectorizer = open("resources/vectorizer.pkl","rb")
+sentiments_cv =joblib.load(team_vectorizer)
+
 
 def clean_tweet(text):
     
@@ -89,8 +102,12 @@ def clean_tweet(text):
 
     
     return text
+
+
+
 # Load your raw data
 raw = pd.read_csv("resources/train.csv")
+
 
 # The main function where we will build the actual app
 def main():
@@ -122,7 +139,7 @@ def main():
                        You can have a look at the Exploratory Data Analysis on **Visuals Analysis** page,
 					   , make your predictions on the **Predictions** and infomation about the team on the **About us** page by navigating on the sidebar.""")
 
-	# Building out the predication page
+		
 		st.subheader("Raw Twitter data and label")
 		if st.checkbox('Show Table'): # data is hidden if box is unchecked
 			st.table(raw.head()) # raw data into table format
@@ -170,14 +187,20 @@ def main():
 		tagsimgs = Image.open('resources/imgs/newstags.png')
 		st.image(tagsimgs, caption='News class most popular tags',use_column_width=True)
 	   
-	   # sentiment definations
+	
+	
+
+
+
+	# sentiment definations
 	sent = {-1: {'Anti': 'The tweet does not believe in climate change'},
              0: {'Neutral': 'The tweet neither support nor no refutes the belief of man-made climate change'},
              1: {'Pro': 'The tweet supports the belief of man-made climate change'},
              2: {'News': 'The tweet links to factual news about climate change'}}
 
-if selection == "Predictions":
-		model = st.selectbox('Select Model to use for Prediction', ["RFC","LSVC","NBC",])
+	
+	if selection == "Predictions":
+		model = st.selectbox('Select Model to use for Prediction', ["RFC","SVC","MNB",])
 
 		st.markdown("""This dropdown offers multiple classification models. You are required to choose a model
 		            	to use.""")
@@ -186,18 +209,19 @@ if selection == "Predictions":
 		tweet_text = st.text_area("Enter Text","Type Here")
 		if model == 'RFC':
 
+
 			if st.button("Classify"):
 				# applying clean_tweet function to clean the user input
-				tweet_text = clean_tweet(tweet_text)
-				# user string input to iterable
-				tweet_text = [tweet_text]
+				#Transforming user input with vectorizer
+				vect_text = sentiments_cv.transform([tweet_text]).toarray()
+				
 				# Load your .pkl file with the model of your choice + make predictions
 				predictor = joblib.load(open(os.path.join("resources/Random_Forest_Classifier.pkl"),"rb"))
-				prediction = predictor.predict(tweet_text)
+				prediction = predictor.predict(vect_text)
 				# display prediction results
 				st.success("Text Categorized as: {}".format(sent[prediction[0]]))
 
-		elif model == 'LSVC':
+		elif model == 'SVC':
 
 			if st.button("Classify"):
 				# applying clean_tweet function to clean the user input
@@ -205,12 +229,12 @@ if selection == "Predictions":
 				# user string input to iterable
 				tweet_text = [tweet_text]
 				# loading a .pkl file and predict with loaded model
-				predictor = joblib.load(open(os.path.join("resources/Linear_Support_Vector_Classifier1.pkl"),"rb"))
+				predictor = joblib.load(open(os.path.join("resources/SVC_model.pkl"),"rb"))
 				prediction = predictor.predict(tweet_text)
 				# display prediction results
 				st.success("Text Categorized as: {}".format(sent[prediction[0]]))
 		
-		elif model == 'NBC':
+		elif model == 'MNB':
 
 			if st.button("Classify"):
 				# applying clean_tweet function to clean the user input
@@ -218,13 +242,12 @@ if selection == "Predictions":
 				# user string input to iterable/list
 				tweet_text = [tweet_text]
 				# loading a .pkl file + predict with loaded model
-				predictor = joblib.load(open(os.path.join("resources/Naive_Bayes_Classifier.pkl"),"rb"))
+				predictor = joblib.load(open(os.path.join("resources/MNB_model.pkl"),"rb"))
 				prediction = predictor.predict(tweet_text)
 				# display prediction results
 				st.success("Text Categorized as: {}".format(sent[prediction[0]]))
 
-				
-if 	selection == "About us":
+	if 	selection == "About us":
 		st.markdown("<h2 style='text-align: left; color: lightblack;'>About Us</h2>", unsafe_allow_html=True)
 		st.markdown("<h1 style='text-align: left; color: lightblack;'>The Intelligence Company</h1>", unsafe_allow_html=True)
 		st.markdown("We specialize in model designing that let our clients do things effectively. Our value shape the way we engage and work with our clients,delivering outstanding user experiences and supported cutting edge technologies.")
@@ -232,34 +255,34 @@ if 	selection == "About us":
 		image = Image.open("resources/imgs/kea.jpg")
 		st.markdown("Meet the team")
 		from PIL import Image
-
+		image = Image.open("resources/imgs/kea.jpg")
 		st.markdown("")
-		st.info("Keamogetswe Sibanyoni, ML ALOGRITHM EXPERT")
+		st.info("Keamogetswe Sibanyoni")
 		st.markdown("* Github account:Keankie")
 		st.markdown("* Kaggle account:Keamogetswe Sibanyoni")
 		st.markdown("* email:KeamogetsweSibanyoni@fnb.co.za")
 		st.markdown("")
 			
 
-		st.info("Selaelo Debang,ML ALOGRITHM EXPERT")
+		st.info("Selaelo Debang")
 		st.markdown("* Github account:debangelaelo")
 		st.markdown("* Kaggle account:Selaelo Debang")
 		st.markdown("* email:debangselaelo@gmail.com")
 		st.markdown("")
 
-		st.info("Chinonso Odiaka ,DATA ENGINEER")
+		st.info("Chinonso Odiaka")
 		st.markdown("* Github account:Blaqadonis")
 		st.markdown("* Kaggle account:Chinonso Odiaka")
 		st.markdown("* email:chinonsoodiaka@gmail.com")
 		st.markdown("")
 
-		st.info("Sinethemba Mthethwa, STATISCIAN")
+		st.info("Sinethemba Mthethwa")
 		st.markdown("* Github account:Sinethemba97")
 		st.markdown("* Kaggle account:Sinethemba Mthethwa")
 		st.markdown("* email:sinethembapurity@gmail.com")
 		st.markdown("")
 
-		st.info("Anathie Ncayiyana, DATA CLEANING EXPERT")
+		st.info("Anathie Ncayiyana")
 		st.markdown("* Github account:mulo-crl")
 		st.markdown("* Kaggle account:Anthi Ncayiyana")
 		st.markdown("* email:anathie.kuseni@gmail.com")
